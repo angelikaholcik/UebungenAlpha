@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Übung 11 – A/a und M/m</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f1e8;font-family:Arial,sans-serif}
+#game{padding:8px 12px 14px;min-height:100vh}
+.top{display:flex;gap:10px;align-items:center}
+.ctl{width:46px;height:46px;border:0;border-radius:14px;background:#fff;font-size:23px;box-shadow:0 2px 8px #bbb;cursor:pointer}
+.track{flex:1;height:16px;background:#ddd;border-radius:10px;overflow:hidden}
+.bar{height:100%;width:0;background:#444;transition:width .2s}
+h1{text-align:center;font-size:clamp(25px,3.2vw,35px);margin:5px 0 7px}
+#board{position:relative;max-width:900px;height:360px;margin:auto;background:#fff;border-radius:26px;overflow:hidden;box-shadow:0 2px 8px #ddd}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;padding:14px;height:100%}
+.card{position:relative;border:0;border-radius:18px;background:#f3f3f3;font-size:54px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.card.ok:after,.card.bad:after{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:65px;font-weight:900;background:rgba(255,255,255,.72);border-radius:16px}
+.card.ok:after{content:"✓";color:#16803a}
+.card.bad:after{content:"✕";color:#c62828}
+#finish{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:82px}
+#finish.show{display:flex}
+@media(max-width:650px){
+  #board{height:335px}
+  .grid{gap:7px;padding:10px}
+  .card{font-size:45px}
+}
+</style>
+</head>
+<body>
+<div id="game">
+  <div class="top">
+    <button id="reset" class="ctl" type="button" aria-label="Neu starten">↺</button>
+    <div class="track"><div id="bar" class="bar"></div></div>
+  </div>
+
+  <h1 id="title"></h1>
+
+  <div id="board">
+    <div id="finish">👏 🎉</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var board=document.getElementById("board");
+  var title=document.getElementById("title");
+  var bar=document.getElementById("bar");
+  var reset=document.getElementById("reset");
+  var finish=document.getElementById("finish");
+
+  var rounds=[
+    {
+      text:"Klick auf alle A und a.",
+      targets:["A","a"],
+      items:["A","m","a","O","M","A","i","a","m","o","A","M","I","a","O"]
+    },
+    {
+      text:"Klick auf alle M und m.",
+      targets:["M","m"],
+      items:["a","M","o","m","A","i","M","a","m","O","A","M","i","a","m"]
+    },
+    {
+      text:"Klick auf alle A und a.",
+      targets:["A","a"],
+      items:["m","o","A","i","a","M","O","a","m","I","A","o","M","a","m"]
+    },
+    {
+      text:"Klick auf alle M und m.",
+      targets:["M","m"],
+      items:["m","A","i","o","M","a","m","O","A","M","i","m","a","o","M"]
+    },
+    {
+      text:"Klick auf alle A und a.",
+      targets:["A","a"],
+      items:["o","m","i","A","M","O","a","I","m","a","o","M","A","i","a"]
+    },
+    {
+      text:"Klick auf alle M und m.",
+      targets:["M","m"],
+      items:["a","o","M","i","A","m","O","M","a","i","m","o","A","M","m"]
+    }
+  ];
+
+  var round=0;
+  var found=0;
+  var needed=0;
+
+  function clearBoard(){
+    var children=Array.from(board.children);
+    children.forEach(function(el){
+      if(el!==finish) el.remove();
+    });
+  }
+
+  function render(){
+    clearBoard();
+    finish.className="";
+    found=0;
+
+    var r=rounds[round];
+    title.textContent=r.text;
+
+    needed=r.items.filter(function(letter){
+      return r.targets.indexOf(letter)!==-1;
+    }).length;
+
+    var grid=document.createElement("div");
+    grid.className="grid";
+
+    r.items.forEach(function(letter){
+      var button=document.createElement("button");
+      button.type="button";
+      button.className="card";
+      button.textContent=letter;
+
+      button.addEventListener("click",function(){
+        if(button.disabled) return;
+
+        if(r.targets.indexOf(letter)!==-1){
+          button.classList.add("ok");
+          button.disabled=true;
+          found++;
+
+          if(found===needed){
+            window.setTimeout(nextRound,500);
+          }
+        }else{
+          button.classList.add("bad");
+          button.disabled=true;
+
+          window.setTimeout(function(){
+            button.classList.remove("bad");
+            button.disabled=false;
+          },450);
+        }
+      });
+
+      grid.appendChild(button);
+    });
+
+    board.appendChild(grid);
+  }
+
+  function nextRound(){
+    round++;
+    bar.style.width=(round/rounds.length*100)+"%";
+
+    if(round>=rounds.length){
+      clearBoard();
+      title.textContent="Super!";
+      finish.className="show";
+    }else{
+      render();
+    }
+  }
+
+  function restartGame(){
+    round=0;
+    bar.style.width="0%";
+    render();
+  }
+
+  reset.addEventListener("click",restartGame);
+  restartGame();
+})();
+</script>
+</body>
+</html>

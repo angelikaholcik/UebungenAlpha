@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Übung 10 – Pärchen und Wort-Bild</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f1e8;font-family:Arial,sans-serif}
+#game{padding:8px 12px 16px;min-height:100vh}.top{display:flex;gap:10px;align-items:center}.ctl{width:46px;height:46px;border:0;border-radius:14px;background:#fff;font-size:23px;box-shadow:0 2px 8px #bbb}.track{flex:1;height:16px;background:#ddd;border-radius:10px;overflow:hidden}.bar{height:100%;width:0;background:#444;transition:.2s}
+h1{text-align:center;font-size:clamp(24px,3.2vw,34px);margin:6px 0 8px}
+#board{position:relative;max-width:900px;height:365px;margin:auto;background:#fff;border-radius:26px;overflow:hidden;box-shadow:0 2px 8px #ddd}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px;height:100%}
+.card{position:relative;border:3px solid transparent;border-radius:20px;background:#f4f4f4;min-width:0;min-height:0;font-size:50px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:5px;user-select:none}
+.card.word{font-size:clamp(20px,3vw,30px)}
+.card.selected{border-color:#555;background:#e8e8e8}
+.card.ok:after,.card.bad:after{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:72px;font-weight:900;background:rgba(255,255,255,.72);border-radius:17px}
+.card.ok:after{content:"✓";color:#16803a}.card.bad:after{content:"✕";color:#c62828}
+#finish{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:82px;z-index:10}.show{display:flex!important}
+@media(max-width:650px){#board{height:340px}.grid{gap:7px;padding:10px}.card{font-size:42px}.card.word{font-size:20px}}
+</style></head>
+<body><div id="game"><div class="top"><button id="reset" class="ctl">↺</button><div class="track"><div id="bar" class="bar"></div></div></div>
+<h1 id="title">Finde die Pärchen.</h1><div id="board"><div id="finish">👏 🎉</div></div></div>
+<script>
+(function(){
+var board=document.getElementById("board"),title=document.getElementById("title"),bar=document.getElementById("bar"),reset=document.getElementById("reset"),finish=document.getElementById("finish");
+var rounds=[
+ {mode:"image",pairs:[["🍎","Apfel"],["🐭","Maus"],["🌙","Mond"],["🚦","Ampel"]]},
+ {mode:"image",pairs:[["🥑","Avocado"],["🍍","Ananas"],["🥛","Milch"],["🐒","Affe"]]},
+ {mode:"word",pairs:[["🍎","Apfel"],["🐭","Maus"],["🌙","Mond"],["🚦","Ampel"]]},
+ {mode:"word",pairs:[["🥑","Avocado"],["🍍","Ananas"],["🥛","Milch"],["🐒","Affe"]]},
+ {mode:"word",pairs:[["🏍️","Motorrad"],["👄","Mund"],["💪","Arm"],["👨","Mann"]]}
+],round=0,first=null,locked=false,matched=0;
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t}return a}
+function clear(){Array.from(board.children).forEach(function(x){if(x!==finish)x.remove()})}
+function render(){
+ clear();first=null;locked=false;matched=0;finish.className="";
+ var R=round; var data=rounds[R]; title.textContent=data.mode==="image"?"Finde die Pärchen.":"Wort und Bild.";
+ var g=document.createElement("div");g.className="grid";
+ var cards=[];
+ data.pairs.forEach(function(p){
+   if(data.mode==="image"){
+     cards.push({key:p[1],show:p[0],kind:"image"});
+     cards.push({key:p[1],show:p[0],kind:"image"});
+   }else{
+     cards.push({key:p[1],show:p[0],kind:"image"});
+     cards.push({key:p[1],show:p[1],kind:"word"});
+   }
+ });
+ shuffle(cards).forEach(function(c){
+   var b=document.createElement("button");b.className="card "+(c.kind==="word"?"word":"");b.textContent=c.show;b.dataset.key=c.key;
+   b.addEventListener("click",function(){choose(b)});
+   g.appendChild(b);
+ });
+ board.appendChild(g);
+}
+function choose(b){
+ if(locked||b.disabled)return;
+ if(!first){first=b;b.classList.add("selected");return}
+ if(b===first){return}
+ locked=true;b.classList.add("selected");
+ if(b.dataset.key===first.dataset.key){
+   b.classList.remove("selected");first.classList.remove("selected");b.classList.add("ok");first.classList.add("ok");b.disabled=true;first.disabled=true;matched++;
+   setTimeout(function(){b.style.visibility="hidden";first.style.visibility="hidden";first=null;locked=false;if(matched===4){round++;bar.style.width=(round/rounds.length*100)+"%";if(round>=rounds.length){clear();title.textContent="Super!";finish.className="show"}else setTimeout(render,350)}},450);
+ }else{
+   b.classList.add("bad");first.classList.add("bad");
+   var old=first;setTimeout(function(){b.classList.remove("selected","bad");old.classList.remove("selected","bad");first=null;locked=false},500);
+ }
+}
+function restart(){round=0;bar.style.width="0%";render()}
+reset.addEventListener("click",restart);restart();
+})();</script></body></html>

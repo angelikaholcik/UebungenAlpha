@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Übung 8 – Maus ziehen</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f1e8;font-family:Arial,sans-serif;overflow:hidden}
+#game{min-height:100vh;padding:14px 18px 22px}.top{display:flex;gap:12px;align-items:center}.ctl{width:56px;height:56px;border:0;border-radius:16px;background:#fff;font-size:28px;box-shadow:0 2px 8px #bbb;cursor:pointer}.track{flex:1;height:18px;background:#ddd;border-radius:12px;overflow:hidden}.bar{height:100%;width:0;background:#444;transition:.2s}
+h1{text-align:center;font-size:clamp(25px,3.5vw,38px);margin:7px 0 9px}
+#board{position:relative;max-width:980px;height:430px;margin:auto;background:#fff;border-radius:30px;overflow:hidden;box-shadow:0 2px 8px #ddd}
+.dot{position:absolute;border-radius:50%;background:#e3e3e3;transform:translate(-50%,-50%);pointer-events:none}.dot.done{background:#c8c8c8}
+#mouse{position:absolute;font-size:50px;line-height:1;transform:translate(-50%,-50%);cursor:grab;user-select:none;touch-action:none;z-index:11}#mouse.drag{cursor:grabbing}
+#goal{position:absolute;font-size:54px;transform:translate(-50%,-50%);z-index:10;pointer-events:none;
+background:#fff;border-radius:50%;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+#hint{position:absolute;font-size:40px;pointer-events:none;z-index:7;animation:hint 1.2s infinite}@keyframes hint{50%{transform:translateX(55px)}}
+#check{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:105px;font-weight:900;color:#16803a;pointer-events:none;z-index:12}#check.on{display:flex}
+</style></head>
+<body><div id="game"><div class="top"><button id="reset" class="ctl">↺</button><div class="track"><div id="bar" class="bar"></div></div></div>
+<h1>Zieh die Maus zum Käse.</h1>
+<div id="board"><div id="mouse">🐭</div><div id="goal">🧀</div><div id="hint">☝️ ➜</div><div id="check">✓</div></div></div>
+<script>
+(function(){
+var routes=[
+[[25,42],[31,42],[37,42],[43,42],[50,42],[57,42],[63,42],[69,42],[75,42]],
+[[25,32],[31,35],[37,38],[43,41],[50,44],[57,47],[63,50],[69,53],[75,56]],
+[[25,48],[31,39],[37,33],[43,30],[50,32],[57,37],[63,43],[69,47],[75,48]],
+[[25,43],[30,35],[35,32],[40,38],[46,47],[54,53],[60,47],[65,38],[70,32],[75,36]],
+[[25,54],[30,46],[35,37],[40,33],[46,37],[54,46],[60,54],[65,56],[70,50],[75,39]],
+[[25,33],[32,33],[39,33],[46,33],[50,39],[50,45],[50,51],[57,55],[66,55],[75,55]]
+],round=0,index=0,dragging=false,dots=[];
+var board=document.getElementById("board"),mouse=document.getElementById("mouse"),goal=document.getElementById("goal"),hint=document.getElementById("hint"),check=document.getElementById("check"),bar=document.getElementById("bar"),reset=document.getElementById("reset");
+function clear(){for(var i=0;i<dots.length;i++)dots[i].remove();dots=[]}
+function setup(){clear();dragging=false;index=0;check.className="";var r=routes[round],size=Math.max(40,62-round*4);for(var i=0;i<r.length;i++){var d=document.createElement("div");d.className="dot";d.style.width=size+"px";d.style.height=size+"px";d.style.left=r[i][0]+"%";d.style.top=r[i][1]+"%";board.appendChild(d);dots.push(d)}place(mouse,r[0]);place(goal,r[r.length-1]);hint.style.display=round<2?"block":"none";hint.style.left=(r[0][0]+7)+"%";hint.style.top=(r[0][1]+4)+"%"}
+function place(el,p){el.style.left=p[0]+"%";el.style.top=p[1]+"%"}
+function pos(e){var b=board.getBoundingClientRect();return{x:(e.clientX-b.left)/b.width*100,y:(e.clientY-b.top)/b.height*100,px:e.clientX-b.left,py:e.clientY-b.top}}
+function dist(a,b){return Math.hypot(a.x-b[0],a.y-b[1])}
+function resetMouse(){dragging=false;mouse.classList.remove("drag");mouse.style.transition="left .25s,top .25s";place(mouse,routes[round][0]);setTimeout(function(){mouse.style.transition=""},270)}
+mouse.addEventListener("pointerdown",function(e){dragging=true;hint.style.display="none";mouse.classList.add("drag");try{mouse.setPointerCapture(e.pointerId)}catch(x){}});
+mouse.addEventListener("pointermove",function(e){
+ if(!dragging)return;
+ var p=pos(e),r=routes[round];
+ mouse.style.left=p.px+"px";
+ mouse.style.top=p.py+"px";
+
+ // Sehr großzügig: kurze Abweichungen vom Weg sind erlaubt.
+ // Es wird nur der Fortschritt entlang der nächsten Punkte erkannt.
+ var advanced=true;
+ while(advanced && index<r.length-1){
+   advanced=false;
+   var next=index+1;
+   if(dist(p,r[next])<13.5){
+     dots[index].classList.add("done");
+     index=next;
+     advanced=true;
+   }
+ }
+});
+mouse.addEventListener("pointerup",function(e){if(!dragging)return;var p=pos(e),r=routes[round];dragging=false;mouse.classList.remove("drag");
+ if(index===r.length-1 && dist(p,r[r.length-1])<14){check.className="on";bar.style.width=((round+1)/routes.length*100)+"%";setTimeout(function(){round++;if(round>=routes.length){clear();mouse.style.display=goal.style.display=hint.style.display="none";check.textContent="👏 🎉";check.className="on"}else setup()},650)}
+ else{resetMouse();index=0;for(var i=0;i<dots.length;i++)dots[i].classList.remove("done")}
+});
+mouse.addEventListener("pointercancel",function(){
+ resetMouse();
+ index=0;
+ for(var i=0;i<dots.length;i++)dots[i].classList.remove("done");
+});
+function restart(){round=0;bar.style.width="0%";mouse.style.display=goal.style.display="";check.textContent="✓";setup()}
+reset.addEventListener("click",restart);restart();
+})();</script></body></html>

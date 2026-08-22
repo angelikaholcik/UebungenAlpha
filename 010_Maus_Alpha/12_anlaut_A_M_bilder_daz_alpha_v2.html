@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Übung 12 – A oder M?</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f1e8;font-family:Arial,sans-serif}
+#game{padding:8px 12px 14px;min-height:100vh}.top{display:flex;gap:10px;align-items:center}.ctl{width:46px;height:46px;border:0;border-radius:14px;background:#fff;font-size:23px;box-shadow:0 2px 8px #bbb}.track{flex:1;height:16px;background:#ddd;border-radius:10px;overflow:hidden}.bar{height:100%;width:0;background:#444;transition:.2s}
+h1{text-align:center;font-size:clamp(25px,3.2vw,35px);margin:5px 0 7px}#board{position:relative;max-width:900px;height:360px;margin:auto;background:#fff;border-radius:26px;overflow:hidden;box-shadow:0 2px 8px #ddd}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;padding:14px;height:100%}.card{position:relative;border:0;border-radius:18px;background:#f3f3f3;font-size:54px;cursor:pointer;display:flex;align-items:center;justify-content:center}.card.ok:after,.card.bad:after{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:68px;font-weight:900;background:rgba(255,255,255,.72);border-radius:16px}.card.ok:after{content:"✓";color:#16803a}.card.bad:after{content:"✕";color:#c62828}
+#finish{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:82px}.show{display:flex!important}
+@media(max-width:650px){#board{height:335px}.grid{gap:7px;padding:10px}.card{font-size:46px}}
+</style></head>
+<body><div id="game"><div class="top"><button id="reset" class="ctl">↺</button><div class="track"><div id="bar" class="bar"></div></div></div><h1 id="title"></h1><div id="board"><div id="finish">👏 🎉</div></div></div>
+<script>
+(function(){
+var board=document.getElementById("board"),title=document.getElementById("title"),bar=document.getElementById("bar"),reset=document.getElementById("reset"),finish=document.getElementById("finish");
+var rounds=[
+ {text:"A – Klick auf alle Bilder.",targets:["🍎","🐒","🥑","🍍"],items:["🍎","🐭","🐒","🌙","🥑","🥛","🍍","🏍️"]},
+ {text:"M – Klick auf alle Bilder.",targets:["🐭","🥛","🌙","🏍️"],items:["🍎","🐭","🐒","🌙","🥑","🥛","🍍","🏍️"]},
+ {text:"A – Klick auf alle Bilder.",targets:["🍎","🐒","🥑","🍍","🚦","💪"],items:["🚦","🐭","🍎","👄","🐒","🌙","💪","🥛","🥑","👨","🍍","🏍️"]},
+ {text:"M – Klick auf alle Bilder.",targets:["🐭","🥛","👄","👨","🌙","🏍️"],items:["🚦","🐭","🍎","👄","🐒","🌙","💪","🥛","🥑","👨","🍍","🏍️"]},
+ {text:"A – Klick auf alle Bilder.",targets:["🚦","🍎","🥑","🐒"],items:["🥛","🚦","🌙","🍎","🐭","🥑","🏍️","🐒"]},
+ {text:"M – Klick auf alle Bilder.",targets:["🐭","👄","🌙","🥛"],items:["🍍","🐭","👄","🥑","🌙","🍎","🥛","🐒"]}
+],round=0,found=0,needed=0;
+function clear(){Array.from(board.children).forEach(function(x){if(x!==finish)x.remove()})}
+function render(){
+ clear();finish.className="";found=0;var r=rounds[round];needed=r.targets.length;title.textContent=r.text;
+ var g=document.createElement("div");g.className="grid";
+ r.items.forEach(function(v){var b=document.createElement("button");b.type="button";b.className="card";b.textContent=v;b.addEventListener("click",function(){
+  if(b.disabled)return;
+  if(r.targets.indexOf(v)!==-1){b.classList.add("ok");b.disabled=true;found++;if(found===needed)setTimeout(next,500)}
+  else{b.classList.add("bad");b.disabled=true;setTimeout(function(){b.classList.remove("bad");b.disabled=false},450)}
+ });g.appendChild(b)});board.appendChild(g)
+}
+function next(){round++;bar.style.width=(round/rounds.length*100)+"%";if(round>=rounds.length){clear();title.textContent="Super!";finish.className="show"}else render()}
+function restart(){round=0;bar.style.width="0%";render()}reset.addEventListener("click",restart);restart();
+})();</script></body></html>

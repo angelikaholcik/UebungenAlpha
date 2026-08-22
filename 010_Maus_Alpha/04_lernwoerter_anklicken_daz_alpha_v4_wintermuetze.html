@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Übung 4 – Lernwörter anklicken</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:#f4f1e8;
+  font-family:Arial,sans-serif;
+  min-height:100vh;
+}
+#game{
+  min-height:100vh;
+  padding:14px 18px 26px;
+}
+#top{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.ctl{
+  width:56px;
+  height:56px;
+  border:0;
+  border-radius:16px;
+  background:#fff;
+  font-size:28px;
+  box-shadow:0 2px 8px rgba(0,0,0,.12);
+  cursor:pointer;
+}
+#progress{
+  flex:1;
+  height:18px;
+  background:#ddd;
+  border-radius:12px;
+  overflow:hidden;
+}
+#bar{
+  height:100%;
+  width:0;
+  background:#444;
+  transition:width .2s;
+}
+h1{
+  text-align:center;
+  font-size:clamp(34px,5vw,62px);
+  margin:18px 0 22px;
+  color:#222;
+}
+#field{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:18px;
+  max-width:920px;
+  margin:0 auto;
+}
+.item{
+  position:relative;
+  min-height:175px;
+  border:0;
+  border-radius:28px;
+  background:#fff;
+  font-size:clamp(64px,8vw,96px);
+  cursor:pointer;
+  box-shadow:0 2px 8px rgba(0,0,0,.10);
+}
+.item:active{transform:scale(.96)}
+.item.wrong::after,
+.item.right::after{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:clamp(100px,14vw,165px);
+  font-weight:900;
+  border-radius:28px;
+  background:rgba(255,255,255,.20);
+  line-height:1;
+}
+.item.wrong::after{content:"✕";color:#c62828}
+.item.right::after{content:"✓";color:#16803a}
+#done{
+  display:none;
+  min-height:420px;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  font-size:110px;
+}
+#done.show{display:flex}
+@media(max-width:650px){
+  #field{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .item{min-height:140px}
+}
+
+.winter-hat{
+  position:relative;
+  display:inline-block;
+  width:112px;
+  height:100px;
+  vertical-align:middle;
+}
+.winter-hat .pom{
+  position:absolute;
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  background:#e74776;
+  top:0;
+  left:39px;
+}
+.winter-hat .cap{
+  position:absolute;
+  width:94px;
+  height:70px;
+  left:9px;
+  top:23px;
+  background:#cf70d2;
+  border:5px solid #7c247f;
+  border-radius:52px 52px 15px 15px;
+}
+.winter-hat .band{
+  position:absolute;
+  width:106px;
+  height:31px;
+  left:3px;
+  bottom:0;
+  background:#ed4776;
+  border:5px solid #7c247f;
+  border-radius:12px;
+}
+
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="top">
+    <button class="ctl" id="restart" type="button" aria-label="Neu starten">↺</button>
+    <div id="progress"><div id="bar"></div></div>
+    <button class="ctl" id="sound" type="button" aria-label="Wort hören">🔊</button>
+  </div>
+
+  <h1 id="prompt">Klick auf den Apfel.</h1>
+
+  <div id="field"></div>
+  <div id="done">👏 🎉</div>
+</div>
+
+<script>
+(function(){
+  var words=[
+    {word:"Affe", icon:"🐒", phrase:"den Affen"},
+    {word:"Melone", icon:"🍉", phrase:"die Melone"},
+    {word:"Avocado", icon:"🥑", phrase:"die Avocado"},
+    {word:"Milch", icon:"🥛", phrase:"die Milch"},
+    {word:"Ampel", icon:"🚦", phrase:"die Ampel"},
+    {word:"Maus", icon:"🐭", phrase:"die Maus"},
+    {word:"Apfel", icon:"🍎", phrase:"den Apfel"},
+    {word:"Mann", icon:"👨", phrase:"den Mann"},
+    {word:"Ananas", icon:"🍍", phrase:"die Ananas"},
+    {word:"Mehl", icon:"🌾", phrase:"das Mehl"},
+    {word:"Arm", icon:"💪", phrase:"den Arm"},
+    {word:"Mund", icon:"👄", phrase:"den Mund"},
+    {word:"Arzt", icon:"👨‍⚕️", phrase:"den Arzt"},
+    {word:"Mütze", icon:"🧶", phrase:"die Mütze"},
+    {word:"Motorrad", icon:"🏍️", phrase:"das Motorrad"},
+    {word:"Mond", icon:"🌙", phrase:"den Mond"}
+  ];
+
+  var field=document.getElementById("field");
+  var prompt=document.getElementById("prompt");
+  var bar=document.getElementById("bar");
+  var done=document.getElementById("done");
+  var restart=document.getElementById("restart");
+  var sound=document.getElementById("sound");
+
+  var order=[];
+  var round=0;
+  var current=null;
+
+  function shuffle(arr){
+    for(var i=arr.length-1;i>0;i--){
+      var j=Math.floor(Math.random()*(i+1));
+      var t=arr[i]; arr[i]=arr[j]; arr[j]=t;
+    }
+    return arr;
+  }
+
+  function speakWord(){
+    if(!current || !("speechSynthesis" in window)) return;
+    var u=new SpeechSynthesisUtterance(current.word);
+    u.lang="de-DE";
+    u.rate=0.75;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  }
+
+  function makeButton(obj,isRight){
+    var b=document.createElement("button");
+    b.type="button";
+    b.className="item";
+    if(obj.word==="Mütze"){
+      b.textContent="";
+      var hat=document.createElement("span");
+      hat.className="winter-hat";
+      hat.setAttribute("aria-hidden","true");
+
+      var pom=document.createElement("span");
+      pom.className="pom";
+      var cap=document.createElement("span");
+      cap.className="cap";
+      var band=document.createElement("span");
+      band.className="band";
+
+      hat.appendChild(pom);
+      hat.appendChild(cap);
+      hat.appendChild(band);
+      b.appendChild(hat);
+    }else{
+      b.textContent=obj.icon;
+    }
+    b.setAttribute("aria-label",obj.word);
+
+    b.addEventListener("click",function(){
+      if(isRight){
+        b.classList.add("right");
+        b.disabled=true;
+        setTimeout(function(){
+          round++;
+          bar.style.width=(round/order.length*100)+"%";
+          if(round>=order.length){
+            field.style.display="none";
+            prompt.style.display="none";
+            done.className="show";
+          }else{
+            drawRound();
+          }
+        },550);
+      }else{
+        b.classList.add("wrong");
+        b.disabled=true;
+      }
+    });
+    return b;
+  }
+
+  function drawRound(){
+    field.innerHTML="";
+    current=order[round];
+    prompt.textContent="Klick auf "+current.phrase+".";
+
+    var pool=words.filter(function(x){return x.word!==current.word});
+    shuffle(pool);
+
+    // Das gesuchte Lernwort ist in jeder Runde garantiert enthalten.
+    var choices=[current];
+    for(var i=0;i<pool.length && choices.length<6;i++){
+      choices.push(pool[i]);
+    }
+    shuffle(choices);
+
+    for(var j=0;j<choices.length;j++){
+      field.appendChild(makeButton(choices[j],choices[j].word===current.word));
+    }
+  }
+
+  function resetGame(){
+    order=shuffle(words.slice());
+    round=0;
+    bar.style.width="0%";
+    done.className="";
+    field.style.display="grid";
+    prompt.style.display="block";
+    drawRound();
+  }
+
+  sound.addEventListener("click",speakWord);
+  restart.addEventListener("click",resetGame);
+
+  resetGame();
+})();
+</script>
+</body>
+</html>

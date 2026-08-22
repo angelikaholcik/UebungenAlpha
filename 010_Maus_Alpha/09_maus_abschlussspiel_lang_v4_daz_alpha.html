@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Übung 9 – Maus-Abschlussspiel</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f1e8;font-family:Arial,sans-serif;overflow:hidden}
+#game{min-height:100vh;padding:8px 12px}.top{display:flex;gap:12px;align-items:center}.ctl{width:46px;height:46px;border:0;border-radius:15px;background:#fff;font-size:23px;box-shadow:0 2px 8px #bbb;cursor:pointer}.track{flex:1;height:16px;background:#ddd;border-radius:10px;overflow:hidden}.bar{height:100%;width:0;background:#444;transition:.2s}
+h1{text-align:center;font-size:clamp(23px,3vw,32px);margin:5px 0 7px}
+#board{position:relative;max-width:900px;height:360px;margin:auto;background:#fff;border-radius:28px;overflow:hidden;box-shadow:0 2px 8px #ddd}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px;height:100%}.item{position:relative;border:0;border-radius:24px;background:#f7f7f7;font-size:54px;cursor:pointer}.item.wrong:after,.item.right:after{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:78px;font-weight:900}.item.wrong:after{content:"✕";color:#c62828}.item.right:after{content:"✓";color:#16803a}
+.drag{position:absolute;font-size:48px;cursor:grab;user-select:none;touch-action:none;z-index:6}.target{position:absolute;width:150px;height:112px;border:5px dashed #999;border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:48px}
+.dot{position:absolute;border-radius:50%;background:#ddd;transform:translate(-50%,-50%)}.dot.done{background:#999}
+#mover{position:absolute;font-size:48px;transform:translate(-50%,-50%);z-index:8;pointer-events:none}
+#finish{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:78px;z-index:20}.show{display:flex!important}
+
+@media(max-width:650px){
+  #board{height:330px}
+  .grid{gap:8px;padding:10px}
+  .item{font-size:46px}
+  .target{width:130px;height:100px;font-size:50px}
+  .drag{font-size:50px}
+}
+</style></head><body>
+<div id="game"><div class="top"><button id="reset" class="ctl">↺</button><div class="track"><div id="bar" class="bar"></div></div></div><h1 id="title"></h1><div id="board"><div id="finish">👏 🎉</div></div></div>
+<script>
+(function(){
+var board=document.getElementById("board"),title=document.getElementById("title"),bar=document.getElementById("bar"),reset=document.getElementById("reset"),finish=document.getElementById("finish");
+var step=0,total=21;
+var tasks=[
+ {type:"click",text:"Klick auf den Apfel.",answer:"🍎",choices:["🍎","🐭","🌙","🥑","🚦","🍍"]},
+ {type:"find",text:"Wo ist die Maus?",answer:"🐭",choices:["🐒","🍍","🐭","🥛","🌙","🚦"]},
+ {type:"dragEasy",text:"Zieh den Apfel in den Korb."},
+ {type:"click",text:"Klick auf den Mond.",answer:"🌙",choices:["🚦","🌙","🍎","🏍️","🥑","🐒"]},
+ {type:"trace",text:"Fahr den Weg nach."},
+ {type:"click",text:"Klick auf die Ampel.",answer:"🚦",choices:["🍍","🥛","🚦","🐭","🍎","🌙"]},
+ {type:"find",text:"Wo ist die Maus?",answer:"🐭",choices:["🥑","🐒","🌙","🐭","🍍","🚦"]},
+ {type:"click",text:"Klick auf die Ananas.",answer:"🍍",choices:["🍎","🍍","🥑","🌙","🐭","🥛"]},
+ {type:"dragHard",text:"Zieh den Apfel in den Korb."},
+ {type:"click",text:"Klick auf die Avocado.",answer:"🥑",choices:["🥑","🍎","🍍","🐭","🌙","🚦"]},
+ {type:"trace2",text:"Fahr den Weg nach."},
+ {type:"hold",text:"Zieh die Maus zum Käse."},
+ {type:"click",text:"Klick auf die Milch.",answer:"🥛",choices:["🥛","🐒","🍎","🌙","🐭","🍍"]},
+ {type:"find",text:"Wo ist die Maus?",answer:"🐭",choices:["🚦","🥑","🍍","🌙","🐭","🥛"]},
+ {type:"click",text:"Klick auf den Affen.",answer:"🐒",choices:["🐒","🍎","🐭","🥑","🍍","🌙"]},
+ {type:"dragReverse",text:"Zieh den Apfel in den Korb."},
+ {type:"click",text:"Klick auf das Motorrad.",answer:"🏍️",choices:["🏍️","🚦","🌙","🍎","🐭","🥑"]},
+ {type:"trace3",text:"Fahr den Weg nach."},
+ {type:"hold",text:"Zieh die Maus zum Käse."},
+ {type:"holdHard",text:"Zieh die Maus zum Käse."},
+ {type:"click",text:"Klick auf die Maus.",answer:"🐭",choices:["🍍","🐭","🍎","🥑","🚦","🌙"]}
+];
+function clear(){var kids=Array.from(board.children);kids.forEach(function(x){if(x!==finish)x.remove()})}
+function next(){step++;bar.style.width=(step/total*100)+"%";if(step>=total){clear();title.textContent="Super!";finish.className="show";return}setTimeout(render,450)}
+function render(){clear();finish.className="";var t=tasks[step];title.textContent=t.text;if(t.type==="click"||t.type==="find")clickTask(t);else if(t.type==="dragEasy")dragTask("easy");else if(t.type==="dragHard")dragTask("hard");else if(t.type==="dragReverse")dragTask("reverse");else if(t.type==="hold")holdTask(false);else if(t.type==="holdHard")holdTask(true);else traceTask(t.type)}
+function clickTask(t){var g=document.createElement("div");g.className="grid";var arr=t.choices.slice().sort(function(){return Math.random()-.5});arr.forEach(function(sym){var b=document.createElement("button");b.className="item";b.textContent=sym;b.onclick=function(){if(sym===t.answer){b.classList.add("right");Array.from(g.children).forEach(function(x){x.disabled=true});next()}else{b.classList.add("wrong");b.disabled=true}};g.appendChild(b)});board.appendChild(g)}
+function dragTask(kind){
+ var a=document.createElement("div");
+ a.className="drag";
+ a.textContent="🍎";
+
+ var basket=document.createElement("div");
+ basket.className="target";
+ basket.textContent="🧺";
+
+ // 1. leicht: Apfel links, Korb rechts
+ // 2. schwieriger: kleiner und größere Distanz
+ // 3. umgekehrt: Apfel rechts, Korb links
+ if(kind==="hard"){
+   a.style.left="16%";
+   a.style.top="18%";
+   a.style.fontSize="42px";
+   basket.style.right="14%";
+   basket.style.top="54%";
+   basket.style.width="120px";
+   basket.style.height="90px";
+   basket.style.fontSize="44px";
+ }else if(kind==="reverse"){
+   a.style.left="76%";
+   a.style.top="24%";
+   a.style.fontSize="46px";
+   basket.style.left="14%";
+   basket.style.top="56%";
+   basket.style.width="130px";
+   basket.style.height="96px";
+   basket.style.fontSize="46px";
+ }else{
+   a.style.left="18%";
+   a.style.top="40%";
+   basket.style.right="16%";
+   basket.style.top="29%";
+ }
+
+ board.append(a,basket);
+
+ var dragging=false,dx=0,dy=0;
+ var startLeft=a.style.left,startTop=a.style.top;
+
+ a.onpointerdown=function(e){
+   dragging=true;
+   var r=a.getBoundingClientRect();
+   dx=e.clientX-r.left;
+   dy=e.clientY-r.top;
+   try{a.setPointerCapture(e.pointerId)}catch(x){}
+ };
+
+ a.onpointermove=function(e){
+   if(!dragging)return;
+   var f=board.getBoundingClientRect(),r=a.getBoundingClientRect();
+   a.style.left=Math.max(0,Math.min(e.clientX-f.left-dx,f.width-r.width))+"px";
+   a.style.top=Math.max(0,Math.min(e.clientY-f.top-dy,f.height-r.height))+"px";
+ };
+
+ a.onpointerup=function(){
+   if(!dragging)return;
+   dragging=false;
+   var r=a.getBoundingClientRect(),b=basket.getBoundingClientRect();
+   var cx=r.left+r.width/2,cy=r.top+r.height/2;
+
+   if(cx>b.left&&cx<b.right&&cy>b.top&&cy<b.bottom){
+     basket.textContent="✓";
+     basket.style.color="#16803a";
+     a.style.display="none";
+     next();
+   }else{
+     a.style.transition="left .25s,top .25s";
+     a.style.left=startLeft;
+     a.style.top=startTop;
+     setTimeout(function(){a.style.transition=""},270);
+   }
+ };
+}
+
+function holdTask(hard){
+ var pts = hard
+   ? [[22,56],[28,40],[34,28],[41,36],[47,55],[54,66],[61,51],[67,32],[73,27],[78,43]]
+   : [[24,48],[32,39],[40,34],[48,39],[56,49],[64,55],[76,45]];
+ var dots=[];
+ var dotSize=hard?44:54;
+
+ for(var i=0;i<pts.length;i++){
+   var d=document.createElement("div");
+   d.className="dot";
+   d.style.width=d.style.height=dotSize+"px";
+   d.style.left=pts[i][0]+"%";
+   d.style.top=pts[i][1]+"%";
+   board.appendChild(d);
+   dots.push(d);
+ }
+
+ var m=document.createElement("div");
+ m.className="drag";
+ m.textContent="🐭";
+ m.style.left=pts[0][0]+"%";
+ m.style.top=pts[0][1]+"%";
+ m.style.transform="translate(-50%,-50%)";
+ m.style.fontSize=hard?"44px":"48px";
+ board.appendChild(m);
+
+ var cheese=document.createElement("div");
+ cheese.style.position="absolute";
+ cheese.style.left=pts[pts.length-1][0]+"%";
+ cheese.style.top=pts[pts.length-1][1]+"%";
+ cheese.style.transform="translate(-50%,-50%)";
+ cheese.style.fontSize=hard?"46px":"54px";
+ cheese.style.zIndex="5";
+ cheese.textContent="🧀";
+ board.appendChild(cheese);
+
+ var dragging=false,idx=0;
+
+ m.onpointerdown=function(e){
+   dragging=true;
+   try{m.setPointerCapture(e.pointerId)}catch(x){}
+ };
+
+ m.onpointermove=function(e){
+   if(!dragging)return;
+   var r=board.getBoundingClientRect();
+   var x=(e.clientX-r.left)/r.width*100;
+   var y=(e.clientY-r.top)/r.height*100;
+   m.style.left=x+"%";
+   m.style.top=y+"%";
+
+   var ni=Math.min(idx+1,pts.length-1);
+   var tol=hard?8.5:10;
+   if(Math.hypot(x-pts[ni][0],y-pts[ni][1])<tol){
+     dots[idx].classList.add("done");
+     idx=ni;
+   }
+ };
+
+ m.onpointerup=function(e){
+   if(!dragging)return;
+   dragging=false;
+   var r=board.getBoundingClientRect();
+   var x=(e.clientX-r.left)/r.width*100;
+   var y=(e.clientY-r.top)/r.height*100;
+   var goalTol=hard?10:12;
+
+   if(idx===pts.length-1 && Math.hypot(x-pts[pts.length-1][0],y-pts[pts.length-1][1])<goalTol){
+     cheese.textContent="✓";
+     cheese.style.color="#16803a";
+     m.style.display="none";
+     next();
+   }else{
+     idx=0;
+     for(var i=0;i<dots.length;i++)dots[i].classList.remove("done");
+     m.style.transition="left .25s,top .25s";
+     m.style.left=pts[0][0]+"%";
+     m.style.top=pts[0][1]+"%";
+     setTimeout(function(){m.style.transition=""},270);
+   }
+ };
+}
+
+function traceTask(kind){
+var sets={
+ trace:[[24,48],[32,39],[40,34],[48,40],[56,50],[64,56],[76,48]],
+ trace2:[[76,30],[69,39],[62,50],[55,58],[48,49],[41,35],[34,30],[27,40],[22,52]],
+ trace3:[[22,56],[28,38],[34,28],[40,44],[46,60],[52,48],[58,30],[64,36],[70,56],[76,44]]
+};
+var pts=sets[kind]||sets.trace,idx=0,dots=[];pts.forEach(function(p,i){var d=document.createElement("div");d.className="dot";d.style.width=d.style.height=(kind==="trace"?52:(kind==="trace2"?46:42))+"px";d.style.left=p[0]+"%";d.style.top=p[1]+"%";board.appendChild(d);dots.push(d)});var m=document.createElement("div");m.id="mover";m.textContent="🐭";m.style.left=pts[0][0]+"%";m.style.top=pts[0][1]+"%";board.appendChild(m);var cheese=document.createElement("div");cheese.id="mover";cheese.textContent="🧀";cheese.style.left=pts[pts.length-1][0]+"%";cheese.style.top=pts[pts.length-1][1]+"%";board.appendChild(cheese);
+board.onmousemove=function(e){var r=board.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*100,y=(e.clientY-r.top)/r.height*100;if(Math.hypot(x-pts[idx][0],y-pts[idx][1])<7){dots[idx].classList.add("done");idx++;if(idx>=pts.length){board.onmousemove=null;next()}}}}
+function restart(){step=0;bar.style.width="0%";finish.className="";render()}reset.onclick=restart;restart();
+})();</script></body></html>

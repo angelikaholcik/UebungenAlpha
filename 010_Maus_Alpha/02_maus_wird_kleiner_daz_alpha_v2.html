@@ -1,0 +1,18 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Übung 2</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#f4f1e8;overflow:hidden;font-family:Arial,sans-serif}#game{position:relative;width:100vw;height:100vh;min-height:500px}.top{position:absolute;z-index:3;top:14px;left:14px;right:14px;display:flex;gap:12px;align-items:center}.ctl{width:56px;height:56px;border:0;border-radius:16px;background:#fff;font-size:28px;box-shadow:0 2px 8px #bbb}.track{flex:1;height:18px;background:#ddd;border-radius:12px;overflow:hidden}.bar{height:100%;background:#444;width:0;transition:width .2s}#mouse{position:absolute;border:0;background:transparent;padding:8px;cursor:pointer;line-height:1}#done{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:110px}#done.on{display:flex}</style></head>
+<body><div id="game"><div class="top"><button class="ctl" id="reset">↺</button><div class="track"><div class="bar" id="bar"></div></div><button class="ctl" id="sound">🔊</button></div><button id="mouse">🐭</button><div id="done">👏 🎉</div></div>
+<script>
+(function(){
+var game=document.getElementById("game"), mouse=document.getElementById("mouse"), bar=document.getElementById("bar"), done=document.getElementById("done");
+var reset=document.getElementById("reset"), sound=document.getElementById("sound");
+var sizes=[112,112,104,104,96,96,88,88,80,80,72,72,66,66,60,60], hit=0, soundOn=true, ac=null;
+function audio(){var A=window.AudioContext||window.webkitAudioContext;if(!A)return null;if(!ac)ac=new A();return ac}
+function note(freq,start,dur,vol){var a=audio();if(!a)return;var o=a.createOscillator(),g=a.createGain();o.type="sine";o.frequency.value=freq;g.gain.setValueAtTime(0.0001,start);g.gain.linearRampToValueAtTime(vol,start+0.01);g.gain.exponentialRampToValueAtTime(0.0001,start+dur);o.connect(g);g.connect(a.destination);o.start(start);o.stop(start+dur+.02)}
+function pling(){if(!soundOn)return;var a=audio();if(!a)return;var t=a.currentTime;note(659.25,t,.38,.04);note(987.77,t+.025,.35,.022)}
+function success(){if(!soundOn)return;var a=audio();if(!a)return;var t=a.currentTime, ns=[523.25,659.25,783.99,1046.5];for(var i=0;i<ns.length;i++)note(ns[i],t+i*.12,.3,.035)}
+function place(){var r=game.getBoundingClientRect(), sz=sizes[Math.min(hit,sizes.length-1)];mouse.style.fontSize=sz+"px";var left=30, top=90, maxX=Math.max(left,r.width-sz-40), maxY=Math.max(top,r.height-sz-30);mouse.style.left=(left+Math.random()*Math.max(1,maxX-left))+"px";mouse.style.top=(top+Math.random()*Math.max(1,maxY-top))+"px"}
+function restart(){hit=0;bar.style.width="0%";done.className="";mouse.style.display="block";place()}
+mouse.addEventListener("click",function(){if(hit>=sizes.length)return;pling();hit++;bar.style.width=(hit/sizes.length*100)+"%";if(hit===sizes.length){mouse.style.display="none";done.className="on";success()}else place()});
+reset.addEventListener("click",restart);sound.addEventListener("click",function(){soundOn=!soundOn;sound.textContent=soundOn?"🔊":"🔇"});window.addEventListener("resize",function(){if(hit<sizes.length)place()});restart();
+})();
+</script></body></html>
