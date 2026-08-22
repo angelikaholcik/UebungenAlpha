@@ -1,0 +1,52 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Übung 6 – Ziehen und zuordnen</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f1e8;font-family:Arial,sans-serif;min-height:100vh;overflow:hidden}#game{padding:8px 12px 14px;min-height:100vh}.top{display:flex;gap:12px;align-items:center}.ctl{width:56px;height:56px;border:0;border-radius:16px;background:#fff;font-size:28px;box-shadow:0 2px 8px #bbb}.track{flex:1;height:18px;background:#ddd;border-radius:12px;overflow:hidden}.bar{height:100%;width:0;background:#444;transition:width .25s}h1{text-align:center;font-size:clamp(25px,3.5vw,38px);margin:7px 0 9px}#field{position:relative;max-width:900px;height:420px;margin:auto;background:#fff;border-radius:30px;box-shadow:0 2px 8px rgba(0,0,0,.08);overflow:hidden}.drag{position:absolute;font-size:68px;line-height:1;cursor:grab;user-select:none;touch-action:none;z-index:5}.drag:active{cursor:grabbing}.target{position:absolute;width:145px;height:112px;border:5px dashed #999;border-radius:25px;display:flex;align-items:center;justify-content:center;font-size:60px;opacity:.75}.mark{position:absolute;display:none;align-items:center;justify-content:center;font-size:82px;font-weight:900;pointer-events:none;z-index:10}.mark.on{display:flex}.ok{color:#16803a}.done{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:110px;z-index:20}.done.on{display:flex}</style></head>
+<body><div id="game"><div class="top"><button class="ctl" id="reset">↺</button><div class="track"><div class="bar" id="bar"></div></div></div><h1>Zieh die Bilder zusammen.</h1><div id="field"><div id="done" class="done">👏 🎉</div></div></div>
+<script>
+(function(){
+var field=document.getElementById("field"),bar=document.getElementById("bar"),reset=document.getElementById("reset"),done=document.getElementById("done");
+var rounds=[
+ [["🍎","Apfel"],["🐭","Maus"]],
+ [["🍍","Ananas"],["🥑","Avocado"]],
+ [["🚦","Ampel"],["🏍️","Motorrad"],["🌙","Mond"]],
+ [["🐒","Affe"],["🥛","Milch"],["👄","Mund"]]
+],round=0,placed=0,total=0;
+for(var z=0;z<rounds.length;z++)total+=rounds[z].length;
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t}return a}
+function build(){
+ var old=field.querySelectorAll(".drag,.target,.mark");for(var q=0;q<old.length;q++)old[q].remove();
+ var items=rounds[round],n=items.length,w=field.clientWidth,h=field.clientHeight;
+ var targets=shuffle(items.slice());
+ for(var i=0;i<n;i++){
+   var t=document.createElement("div");t.className="target";t.dataset.word=targets[i][1];t.textContent=targets[i][0];
+   var tx=(n===1?50:(18+i*(64/(n-1))));
+    t.style.left=tx+"%";t.style.top="64%";t.style.transform="translateX(-50%)";field.appendChild(t);
+ }
+ var starts=shuffle(items.slice());
+ for(var j=0;j<n;j++){
+   var d=document.createElement("div");d.className="drag";d.dataset.word=starts[j][1];d.textContent=starts[j][0];
+   var dxp=(n===1?50:(20+j*(60/(n-1))));
+    d.style.left=dxp+"%";d.style.top="16%";d.style.transform="translateX(-50%)";field.appendChild(d);wire(d);
+ }
+}
+function wire(d){
+ var dragging=false,dx=0,dy=0,sx=d.style.left,sy=d.style.top;
+ d.addEventListener("pointerdown",function(e){
+  dragging=true;
+  var f=field.getBoundingClientRect(),r=d.getBoundingClientRect();
+  dx=e.clientX-r.left;dy=e.clientY-r.top;
+  d.style.left=(r.left-f.left)+"px";d.style.top=(r.top-f.top)+"px";d.style.transform="none";
+  sx=d.style.left;sy=d.style.top;
+  try{d.setPointerCapture(e.pointerId)}catch(x){}
+});
+ d.addEventListener("pointermove",function(e){if(!dragging)return;var f=field.getBoundingClientRect(),r=d.getBoundingClientRect(),x=e.clientX-f.left-dx,y=e.clientY-f.top-dy;x=Math.max(0,Math.min(x,f.width-r.width));y=Math.max(0,Math.min(y,f.height-r.height));d.style.left=x+"px";d.style.top=y+"px"});
+ d.addEventListener("pointerup",function(){if(!dragging)return;dragging=false;var r=d.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,ts=field.querySelectorAll(".target"),match=null;for(var i=0;i<ts.length;i++){var tr=ts[i].getBoundingClientRect();if(cx>tr.left&&cx<tr.right&&cy>tr.top&&cy<tr.bottom){match=ts[i];break}}
+   if(match&&match.dataset.word===d.dataset.word){var f=field.getBoundingClientRect(),mr=match.getBoundingClientRect();d.style.left=(mr.left-f.left+(mr.width-r.width)/2)+"px";d.style.top=(mr.top-f.top+(mr.height-r.height)/2)+"px";d.style.pointerEvents="none";match.style.opacity=".25";var m=document.createElement("div");m.className="mark on ok";m.textContent="✓";m.style.left=match.offsetLeft+"px";m.style.top=match.offsetTop+"px";m.style.width=match.offsetWidth+"px";m.style.height=match.offsetHeight+"px";field.appendChild(m);placed++;bar.style.width=(placed/total*100)+"%";if(allPlaced())setTimeout(next,650)}
+   else{d.style.transition="left .25s,top .25s";d.style.left=sx;d.style.top=sy;setTimeout(function(){d.style.transition=""},270)}
+ });
+}
+function allPlaced(){var ds=field.querySelectorAll(".drag");for(var i=0;i<ds.length;i++)if(ds[i].style.pointerEvents!=="none")return false;return true}
+function next(){round++;if(round>=rounds.length){var old=field.querySelectorAll(".drag,.target,.mark");for(var i=0;i<old.length;i++)old[i].remove();done.className="done on"}else build()}
+function restart(){round=0;placed=0;bar.style.width="0%";done.className="done";build()}
+reset.addEventListener("click",restart);restart();
+})();</script></body></html>
