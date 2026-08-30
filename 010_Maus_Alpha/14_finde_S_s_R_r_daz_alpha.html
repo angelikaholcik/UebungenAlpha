@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Übung 14 – S/s und R/r finden</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f1e8;font-family:Arial,sans-serif}
+#game{padding:8px 12px 14px;min-height:100vh}
+.top{display:flex;gap:10px;align-items:center}
+.ctl{width:46px;height:46px;border:0;border-radius:14px;background:#fff;font-size:23px;box-shadow:0 2px 8px #bbb;cursor:pointer}
+.track{flex:1;height:16px;background:#ddd;border-radius:10px;overflow:hidden}
+.bar{height:100%;width:0;background:#444;transition:.2s}
+h1{text-align:center;font-size:clamp(25px,3.2vw,35px);margin:5px 0 7px}
+#board{position:relative;max-width:900px;height:360px;margin:auto;background:#fff;border-radius:26px;overflow:hidden;box-shadow:0 2px 8px #ddd}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;padding:14px;height:100%}
+.card{position:relative;border:0;border-radius:18px;background:#f3f3f3;font-size:52px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.card.ok:after,.card.bad:after{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:64px;font-weight:900;background:rgba(255,255,255,.72);border-radius:16px}
+.card.ok:after{content:"✓";color:#16803a}
+.card.bad:after{content:"✕";color:#c62828}
+#finish{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:82px}
+#finish.show{display:flex}
+@media(max-width:650px){
+  #board{height:335px}
+  .grid{gap:7px;padding:10px}
+  .card{font-size:44px}
+}
+</style>
+</head>
+<body>
+<div id="game">
+  <div class="top">
+    <button id="reset" class="ctl" type="button" aria-label="Neu starten">↺</button>
+    <div class="track"><div id="bar" class="bar"></div></div>
+  </div>
+  <h1 id="title"></h1>
+  <div id="board">
+    <div id="finish">👏 🎉</div>
+  </div>
+</div>
+<script>
+(function(){
+  var board=document.getElementById("board");
+  var title=document.getElementById("title");
+  var bar=document.getElementById("bar");
+  var reset=document.getElementById("reset");
+  var finish=document.getElementById("finish");
+
+  var rounds=[
+    {text:"Klick auf alle S und s.",targets:["S","s"],items:["S","m","s","A","L","S","r","s","M","a","S","l","R","s","A"]},
+    {text:"Klick auf alle R und r.",targets:["R","r"],items:["a","R","s","r","M","l","R","S","r","A","m","R","s","r","L"]},
+    {text:"Klick auf alle S und s.",targets:["S","s"],items:["r","L","S","m","s","A","R","s","M","l","S","a","r","s","L"]},
+    {text:"Klick auf alle R und r.",targets:["R","r"],items:["R","a","s","L","r","M","R","m","S","r","A","l","R","s","r"]},
+    {text:"Klick auf alle S und s.",targets:["S","s"],items:["A","m","R","s","L","S","a","r","s","M","S","l","A","s","R"]},
+    {text:"Klick auf alle R und r.",targets:["R","r"],items:["s","R","A","m","r","L","R","a","S","r","M","l","R","s","r"]}
+  ];
+
+  var round=0,found=0,needed=0;
+
+  function clearBoard(){
+    Array.from(board.children).forEach(function(el){
+      if(el!==finish) el.remove();
+    });
+  }
+
+  function shuffle(arr){
+    for(var i=arr.length-1;i>0;i--){
+      var j=Math.floor(Math.random()*(i+1));
+      var t=arr[i];arr[i]=arr[j];arr[j]=t;
+    }
+    return arr;
+  }
+
+  function render(){
+    clearBoard();
+    finish.className="";
+    found=0;
+    var r=rounds[round];
+    title.textContent=r.text;
+    needed=r.items.filter(function(letter){return r.targets.indexOf(letter)!==-1;}).length;
+
+    var grid=document.createElement("div");
+    grid.className="grid";
+
+    shuffle(r.items.slice()).forEach(function(letter){
+      var b=document.createElement("button");
+      b.type="button";
+      b.className="card";
+      b.textContent=letter;
+
+      b.addEventListener("click",function(){
+        if(b.disabled)return;
+        if(r.targets.indexOf(letter)!==-1){
+          b.classList.add("ok");
+          b.disabled=true;
+          found++;
+          if(found===needed) setTimeout(nextRound,500);
+        }else{
+          b.classList.add("bad");
+          b.disabled=true;
+          setTimeout(function(){
+            b.classList.remove("bad");
+            b.disabled=false;
+          },450);
+        }
+      });
+
+      grid.appendChild(b);
+    });
+
+    board.appendChild(grid);
+  }
+
+  function nextRound(){
+    round++;
+    bar.style.width=(round/rounds.length*100)+"%";
+    if(round>=rounds.length){
+      clearBoard();
+      title.textContent="Super!";
+      finish.className="show";
+    }else{
+      render();
+    }
+  }
+
+  function restartGame(){
+    round=0;
+    bar.style.width="0%";
+    render();
+  }
+
+  reset.addEventListener("click",restartGame);
+  restartGame();
+})();
+</script>
+</body>
+</html>

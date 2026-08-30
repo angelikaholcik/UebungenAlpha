@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Übung 21 – Zahlen mit Äpfeln</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f1e8;font-family:Arial,sans-serif}
+#game{padding:8px 12px 14px;min-height:100vh}
+.top{display:flex;gap:10px;align-items:center}
+.ctl{width:46px;height:46px;border:0;border-radius:14px;background:#fff;font-size:23px;box-shadow:0 2px 8px #bbb;cursor:pointer}
+.track{flex:1;height:16px;background:#ddd;border-radius:10px;overflow:hidden}
+.bar{height:100%;width:0;background:#444;transition:.2s}
+h1{text-align:center;font-size:clamp(24px,3vw,34px);margin:5px 0 2px}
+#target{font-size:clamp(48px,8vw,78px);font-weight:800;text-align:center;margin:0 0 8px}
+#board{position:relative;max-width:920px;height:430px;margin:auto;background:#fff;border-radius:26px;overflow:hidden;box-shadow:0 2px 8px #ddd}
+.grid{height:100%;padding:14px;display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);gap:12px}
+.card{position:relative;border:0;border-radius:18px;background:#f3f3f3;cursor:pointer;overflow:hidden;padding:12px}
+.apples{height:100%;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:8px;align-items:center;justify-items:center}
+.apple{width:44px;height:44px}
+.card.ok:after,.card.bad:after{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:72px;font-weight:900;background:rgba(255,255,255,.76)}
+.card.ok:after{content:"✓";color:#16803a}
+.card.bad:after{content:"✕";color:#c62828}
+#finish{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:82px}
+#finish.show{display:flex}
+.smallnum{position:absolute;right:10px;bottom:8px;font-size:22px;font-weight:700;color:#666}
+@media(max-width:650px){
+ #board{height:390px}
+ .grid{padding:9px;gap:8px}
+ .apple{width:36px;height:36px}
+ #target{font-size:54px}
+ .smallnum{font-size:18px}
+}
+</style>
+</head>
+<body>
+<div id="game">
+  <div class="top">
+    <button id="reset" class="ctl" type="button">↺</button>
+    <div class="track"><div id="bar" class="bar"></div></div>
+  </div>
+  <h1>Lies und klick auf die richtige Anzahl.</h1>
+  <div id="target"></div>
+  <div id="board"><div id="finish">👏 🎉</div></div>
+</div>
+
+<script>
+(function(){
+var board=document.getElementById("board"),
+    targetEl=document.getElementById("target"),
+    bar=document.getElementById("bar"),
+    finish=document.getElementById("finish");
+
+var baseRounds=[
+  {n:1,w:"eins"},{n:2,w:"zwei"},{n:3,w:"drei"},{n:4,w:"vier"},
+  {n:5,w:"fünf"},{n:6,w:"sechs"},{n:7,w:"sieben"},{n:8,w:"acht"},
+  {n:9,w:"neun"},{n:10,w:"zehn"},{n:11,w:"elf"},{n:12,w:"zwölf"}
+];
+var rounds=[];
+var round=0;
+
+function shuffle(a){
+  for(var i=a.length-1;i>0;i--){
+    var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;
+  }
+  return a;
+}
+
+function clearBoard(){
+  Array.from(board.children).forEach(function(el){ if(el!==finish) el.remove(); });
+}
+
+function appleSVG(){
+  return '<svg class="apple" viewBox="0 0 100 100" aria-hidden="true">'
+      + '<path d="M55 18c7-12 18-12 20-11-2 9-9 18-20 20z" fill="#3f8f4b"/>'
+      + '<path d="M49 20c-8-12-19-12-21-11 2 9 10 18 21 20z" fill="#4ba85a"/>'
+      + '<path d="M50 22c-16 0-28 11-31 27-4 17 4 39 31 39s35-22 31-39c-3-16-15-27-31-27z" fill="#d9342b" stroke="#9c1b17" stroke-width="3"/>'
+      + '<path d="M51 17c6-7 11-10 15-11" stroke="#6b3b17" stroke-width="5" stroke-linecap="round"/>'
+      + '<ellipse cx="38" cy="43" rx="9" ry="15" fill="rgba(255,255,255,.22)" transform="rotate(18 38 43)"/>'
+      + '</svg>';
+}
+
+function makeCard(n){
+  var b=document.createElement("button");
+  b.type="button";
+  b.className="card";
+  b.setAttribute("aria-label",n+" Äpfel");
+
+  var wrap=document.createElement("div");
+  wrap.className="apples";
+  for(var i=0;i<n;i++){
+    var d=document.createElement("div");
+    d.innerHTML=appleSVG();
+    wrap.appendChild(d.firstChild);
+  }
+  b.appendChild(wrap);
+
+  return b;
+}
+
+function pickChoices(target){
+  var nums=[1,2,3,4,5,6,7,8,9,10,11,12].filter(function(n){ return n!==target; });
+  var distractors=[];
+  // Choose close numbers when possible to force real counting.
+  var preferred=nums.filter(function(n){ return Math.abs(n-target)<=2; });
+  shuffle(preferred);
+  while(distractors.length<3 && preferred.length) distractors.push(preferred.pop());
+  shuffle(nums);
+  while(distractors.length<3 && nums.length){
+    var x=nums.pop();
+    if(distractors.indexOf(x)===-1) distractors.push(x);
+  }
+  return shuffle([target].concat(distractors));
+}
+
+function render(){
+  clearBoard();
+  finish.className="";
+  var r=rounds[round], target=r.n;
+  targetEl.textContent=r.w;
+
+  var grid=document.createElement("div");
+  grid.className="grid";
+
+  pickChoices(target).forEach(function(n){
+    var b=makeCard(n);
+    b.onclick=function(){
+      if(b.disabled) return;
+      if(n===target){
+        b.classList.add("ok");
+        b.disabled=true;
+        setTimeout(next,550);
+      }else{
+        b.classList.add("bad");
+        b.disabled=true;
+        setTimeout(function(){
+          b.classList.remove("bad");
+          b.disabled=false;
+        },430);
+      }
+    };
+    grid.appendChild(b);
+  });
+
+  board.appendChild(grid);
+}
+
+function next(){
+  round++;
+  bar.style.width=(round/rounds.length*100)+"%";
+  if(round>=rounds.length){
+    clearBoard();
+    targetEl.textContent="Super!";
+    finish.className="show";
+  }else{
+    render();
+  }
+}
+
+function restart(){
+  round=0;
+  rounds=shuffle(baseRounds.slice());
+  bar.style.width="0%";
+  render();
+}
+
+document.getElementById("reset").onclick=restart;
+restart();
+})();
+</script>
+</body>
+</html>

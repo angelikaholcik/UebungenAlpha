@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Übung 28 – Farben und Zahlwörter ergänzen</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f1e8;font-family:Arial,sans-serif}
+#game{padding:8px 12px 14px;min-height:100vh}
+.top{display:flex;gap:10px;align-items:center}
+.ctl{width:46px;height:46px;border:0;border-radius:14px;background:#fff;font-size:23px;box-shadow:0 2px 8px #bbb;cursor:pointer}
+.track{flex:1;height:16px;background:#ddd;border-radius:10px;overflow:hidden}
+.bar{height:100%;width:0;background:#444;transition:.2s}
+h1{text-align:center;font-size:clamp(24px,3vw,34px);margin:5px 0 7px}
+#board{position:relative;max-width:820px;height:410px;margin:auto;background:#fff;border-radius:26px;overflow:hidden;box-shadow:0 2px 8px #ddd}
+.support{height:48%;display:flex;align-items:center;justify-content:center;padding:12px}
+.colorbox{width:230px;height:145px;border-radius:22px;border:4px solid #777}
+.applewrap{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;align-items:center;max-width:300px}
+.apple{font-size:34px;line-height:1}
+.zero{font-size:90px;font-weight:800}
+.wordrow{height:32%;display:flex;align-items:center;justify-content:center;gap:8px;font-size:clamp(40px,6vw,60px);font-weight:800;letter-spacing:1px}
+.part{white-space:pre}
+.letter{width:68px;height:74px;border:4px solid #777;border-radius:14px;background:#fff;font-size:50px;font-weight:800;text-align:center;outline:none}
+.letter:focus{border-color:#333}
+.feedback{height:20%;display:flex;align-items:center;justify-content:center;font-size:66px;font-weight:900}
+.ok{color:#16803a}.bad{color:#c62828}
+#finish{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:82px}
+#finish.show{display:flex}
+@media(max-width:600px){
+ #board{height:365px}
+ .colorbox{width:190px;height:120px}
+ .apple{font-size:29px}
+ .wordrow{font-size:36px}
+ .letter{width:58px;height:64px;font-size:42px}
+}
+</style>
+</head>
+<body>
+<div id="game">
+ <div class="top">
+  <button id="reset" class="ctl" type="button">↺</button>
+  <div class="track"><div id="bar" class="bar"></div></div>
+ </div>
+ <h1>Tippe den Buchstaben.</h1>
+ <div id="board"><div id="finish">👏 🎉</div></div>
+</div>
+
+<script>
+(function(){
+var board=document.getElementById("board"),
+    bar=document.getElementById("bar"),
+    finish=document.getElementById("finish");
+
+var colors={
+ rot:"#d52b2b",
+ blau:"#2f67c8",
+ grün:"#3f9a52",
+ gelb:"#f2d13d",
+ weiß:"#ffffff"
+};
+
+var baseRounds=[
+ {type:"color",word:"rot",left:"r",right:"t",answer:"o"},
+ {type:"color",word:"blau",left:"bl",right:"u",answer:"a"},
+ {type:"color",word:"grün",left:"gr",right:"n",answer:"ü"},
+ {type:"color",word:"gelb",left:"gel",right:"",answer:"b"},
+ {type:"color",word:"weiß",left:"w",right:"iß",answer:"e"},
+
+ {type:"number",word:"null",n:0,left:"n",right:"ll",answer:"u"},
+ {type:"number",word:"eins",n:1,left:"e",right:"ns",answer:"i"},
+ {type:"number",word:"zwei",n:2,left:"zw",right:"i",answer:"e"},
+ {type:"number",word:"drei",n:3,left:"dr",right:"i",answer:"e"},
+ {type:"number",word:"vier",n:4,left:"v",right:"er",answer:"i"},
+ {type:"number",word:"fünf",n:5,left:"f",right:"nf",answer:"ü"},
+ {type:"number",word:"sechs",n:6,left:"s",right:"chs",answer:"e"},
+ {type:"number",word:"sieben",n:7,left:"sieb",right:"n",answer:"e"},
+ {type:"number",word:"acht",n:8,left:"a",right:"ht",answer:"c"},
+ {type:"number",word:"neun",n:9,left:"n",right:"un",answer:"e"},
+ {type:"number",word:"zehn",n:10,left:"z",right:"hn",answer:"e"},
+ {type:"number",word:"elf",n:11,left:"e",right:"f",answer:"l"},
+ {type:"number",word:"zwölf",n:12,left:"zw",right:"lf",answer:"ö"}
+];
+
+var rounds=[],round=0,locked=false;
+
+function shuffle(a){
+ for(var i=a.length-1;i>0;i--){
+  var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;
+ }
+ return a;
+}
+
+function clearBoard(){
+ Array.from(board.children).forEach(function(e){if(e!==finish)e.remove()});
+}
+
+function renderSupport(r){
+ var area=document.createElement("div");
+ area.className="support";
+
+ if(r.type==="color"){
+   var c=document.createElement("div");
+   c.className="colorbox";
+   c.style.background=colors[r.word];
+   if(r.word==="weiß") c.style.borderColor="#888";
+   area.appendChild(c);
+ }else{
+   if(r.n===0){
+     var z=document.createElement("div");
+     z.className="zero";
+     z.textContent="0";
+     area.appendChild(z);
+   }else{
+     var wrap=document.createElement("div");
+     wrap.className="applewrap";
+     for(var i=0;i<r.n;i++){
+       var a=document.createElement("span");
+       a.className="apple";
+       a.textContent="🍎";
+       wrap.appendChild(a);
+     }
+     area.appendChild(wrap);
+   }
+ }
+ board.appendChild(area);
+}
+
+function render(){
+ clearBoard();
+ finish.className="";
+ locked=false;
+ var r=rounds[round];
+
+ renderSupport(r);
+
+ var row=document.createElement("div");
+ row.className="wordrow";
+
+ var l=document.createElement("span");
+ l.className="part";
+ l.textContent=r.left;
+ row.appendChild(l);
+
+ var input=document.createElement("input");
+ input.className="letter";
+ input.maxLength=1;
+ input.autocomplete="off";
+ input.spellcheck=false;
+ input.setAttribute("aria-label","fehlender Buchstabe");
+ row.appendChild(input);
+
+ var rr=document.createElement("span");
+ rr.className="part";
+ rr.textContent=r.right;
+ row.appendChild(rr);
+
+ board.appendChild(row);
+
+ var fb=document.createElement("div");
+ fb.className="feedback";
+ board.appendChild(fb);
+
+ input.addEventListener("input",function(){
+   if(locked || !input.value)return;
+   if(input.value.toLocaleLowerCase("de-DE")===r.answer.toLocaleLowerCase("de-DE")){
+     locked=true;
+     input.disabled=true;
+     input.value=r.answer;
+     fb.textContent="✓";
+     fb.className="feedback ok";
+     setTimeout(next,620);
+   }else{
+     fb.textContent="✕";
+     fb.className="feedback bad";
+     input.value="";
+     setTimeout(function(){
+       fb.textContent="";
+       fb.className="feedback";
+       input.focus();
+     },430);
+   }
+ });
+
+ setTimeout(function(){input.focus()},80);
+}
+
+function next(){
+ round++;
+ bar.style.width=(round/rounds.length*100)+"%";
+ if(round>=rounds.length){
+   clearBoard();
+   finish.className="show";
+ }else render();
+}
+
+function restart(){
+ round=0;
+ rounds=shuffle(baseRounds.slice());
+ bar.style.width="0%";
+ render();
+}
+
+document.getElementById("reset").onclick=restart;
+restart();
+})();
+</script>
+</body>
+</html>

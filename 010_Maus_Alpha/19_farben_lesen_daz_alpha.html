@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Übung 19 – Farben lesen</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f1e8;font-family:Arial,sans-serif}
+#game{padding:8px 12px 14px;min-height:100vh}
+.top{display:flex;gap:10px;align-items:center}
+.ctl{width:46px;height:46px;border:0;border-radius:14px;background:#fff;font-size:23px;box-shadow:0 2px 8px #bbb;cursor:pointer}
+.track{flex:1;height:16px;background:#ddd;border-radius:10px;overflow:hidden}
+.bar{height:100%;width:0;background:#444;transition:.2s}
+h1{text-align:center;font-size:clamp(24px,3vw,34px);margin:5px 0 2px}
+#word{text-align:center;font-size:clamp(38px,5vw,58px);font-weight:800;margin:0 0 8px}
+#board{position:relative;max-width:900px;height:360px;margin:auto;background:#fff;border-radius:26px;overflow:hidden;box-shadow:0 2px 8px #ddd}
+.grid{height:100%;padding:18px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:14px}
+.card{position:relative;border:4px solid #ddd;border-radius:20px;cursor:pointer;overflow:hidden;background:#eee}
+.swatch{width:100%;height:100%}
+.card.ok:after,.card.bad:after{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:72px;font-weight:900;background:rgba(255,255,255,.72)}
+.card.ok:after{content:"✓";color:#16803a}
+.card.bad:after{content:"✕";color:#c62828}
+#finish{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:82px}
+#finish.show{display:flex}
+@media(max-width:600px){
+  #board{height:335px}
+  .grid{padding:11px;gap:9px}
+  #word{font-size:40px}
+}
+</style>
+</head>
+<body>
+<div id="game">
+  <div class="top">
+    <button id="reset" class="ctl" type="button">↺</button>
+    <div class="track"><div id="bar" class="bar"></div></div>
+  </div>
+
+  <h1>Lies und klick.</h1>
+  <div id="word"></div>
+
+  <div id="board">
+    <div id="finish">👏 🎉</div>
+  </div>
+</div>
+
+<script>
+(function(){
+var board=document.getElementById("board"),
+    wordEl=document.getElementById("word"),
+    bar=document.getElementById("bar"),
+    finish=document.getElementById("finish");
+
+var colors={
+  "rot":"#d52b2b",
+  "blau":"#2f67c8",
+  "grün":"#3f9a52",
+  "gelb":"#f2d13d",
+  "weiß":"#ffffff"
+};
+
+var rounds=[
+  "rot","blau","grün","gelb","weiß",
+  "grün","rot","weiß","blau","gelb",
+  "rot","grün","blau","weiß","gelb"
+];
+
+var round=0;
+
+function shuffle(a){
+  for(var i=a.length-1;i>0;i--){
+    var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;
+  }
+  return a;
+}
+
+function clear(){
+  Array.from(board.children).forEach(function(e){if(e!==finish)e.remove()});
+}
+
+function render(){
+  clear();
+  finish.className="";
+  var target=rounds[round];
+  wordEl.textContent=target;
+
+  var names=Object.keys(colors);
+  var distractors=shuffle(names.filter(function(n){return n!==target})).slice(0,4);
+  var choices=shuffle([target].concat(distractors));
+
+  // sixth card repeats one non-target color so the learner must read, not memorize a fixed grid
+  choices.push(shuffle(distractors.slice())[0]);
+  shuffle(choices);
+
+  var grid=document.createElement("div");
+  grid.className="grid";
+
+  choices.forEach(function(name){
+    var b=document.createElement("button");
+    b.className="card";
+    b.type="button";
+    b.setAttribute("aria-label",name);
+
+    var sw=document.createElement("div");
+    sw.className="swatch";
+    sw.style.background=colors[name];
+    if(name==="weiß") b.style.borderColor="#999";
+    b.appendChild(sw);
+
+    b.onclick=function(){
+      if(b.disabled)return;
+      if(name===target){
+        b.classList.add("ok");
+        b.disabled=true;
+        setTimeout(next,500);
+      }else{
+        b.classList.add("bad");
+        b.disabled=true;
+        setTimeout(function(){
+          b.classList.remove("bad");
+          b.disabled=false;
+        },450);
+      }
+    };
+    grid.appendChild(b);
+  });
+
+  board.appendChild(grid);
+}
+
+function next(){
+  round++;
+  bar.style.width=(round/rounds.length*100)+"%";
+  if(round>=rounds.length){
+    clear();
+    wordEl.textContent="Super!";
+    finish.className="show";
+  }else render();
+}
+
+function restart(){
+  round=0;
+  bar.style.width="0%";
+  render();
+}
+
+document.getElementById("reset").onclick=restart;
+restart();
+})();
+</script>
+</body>
+</html>

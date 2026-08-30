@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Übung 24 – Zahl und Plural lesen</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f1e8;font-family:Arial,sans-serif}
+#game{padding:8px 12px 14px;min-height:100vh}
+.top{display:flex;gap:10px;align-items:center}
+.ctl{width:46px;height:46px;border:0;border-radius:14px;background:#fff;font-size:23px;box-shadow:0 2px 8px #bbb;cursor:pointer}
+.track{flex:1;height:16px;background:#ddd;border-radius:10px;overflow:hidden}
+.bar{height:100%;width:0;background:#444;transition:.2s}
+#prompt{text-align:center;font-size:clamp(30px,4.5vw,48px);font-weight:800;margin:8px 0 10px}
+#board{position:relative;max-width:900px;height:400px;margin:auto;background:#fff;border-radius:26px;overflow:hidden;box-shadow:0 2px 8px #ddd}
+.grid{height:100%;padding:14px;display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);gap:12px}
+.card{position:relative;border:0;border-radius:18px;background:#f3f3f3;cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.pics{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;max-width:90%;max-height:90%}
+.pic{font-size:clamp(40px,5vw,58px);line-height:1}
+.card.ok:after,.card.bad:after{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:72px;font-weight:900;background:rgba(255,255,255,.76)}
+.card.ok:after{content:"✓";color:#16803a}
+.card.bad:after{content:"✕";color:#c62828}
+#finish{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:82px}
+#finish.show{display:flex}
+@media(max-width:600px){
+ #board{height:355px}
+ .grid{padding:9px;gap:8px}
+ .pic{font-size:36px}
+ #prompt{font-size:34px}
+}
+</style>
+</head>
+<body>
+<div id="game">
+ <div class="top">
+  <button id="reset" class="ctl" type="button">↺</button>
+  <div class="track"><div id="bar" class="bar"></div></div>
+ </div>
+ <div id="prompt"></div>
+ <div id="board"><div id="finish">👏 🎉</div></div>
+</div>
+
+<script>
+(function(){
+var board=document.getElementById("board"),
+    promptEl=document.getElementById("prompt"),
+    bar=document.getElementById("bar"),
+    finish=document.getElementById("finish");
+
+var nouns={
+  Rose:{pl:"Rosen",pic:"🌹"},
+  Ring:{pl:"Ringe",pic:"💍"},
+  Apfel:{pl:"Äpfel",pic:"🍎"},
+  Maus:{pl:"Mäuse",pic:"🐭"},
+  Socke:{pl:"Socken",pic:"🧦"},
+  Sofa:{pl:"Sofas",pic:"🛋️"}
+};
+
+var numwords={2:"zwei",3:"drei",4:"vier",5:"fünf",6:"sechs",7:"sieben",8:"acht"};
+
+var baseRounds=[
+ ["Rose",3],["Ring",6],["Socke",2],["Apfel",5],
+ ["Maus",4],["Sofa",3],["Rose",7],["Ring",2],
+ ["Socke",6],["Apfel",4],["Maus",8],["Sofa",5]
+];
+
+var rounds=[],round=0;
+
+function shuffle(a){
+ for(var i=a.length-1;i>0;i--){
+  var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;
+ }
+ return a;
+}
+
+function clearBoard(){
+ Array.from(board.children).forEach(function(e){if(e!==finish)e.remove()});
+}
+
+function pictureGroup(noun,count){
+ var d=document.createElement("div");
+ d.className="pics";
+ for(var i=0;i<count;i++){
+  var s=document.createElement("span");
+  s.className="pic";
+  s.textContent=nouns[noun].pic;
+  d.appendChild(s);
+ }
+ return d;
+}
+
+function makeChoices(noun,count){
+ var allNouns=Object.keys(nouns);
+ var otherNouns=shuffle(allNouns.filter(function(n){return n!==noun})).slice(0,2);
+ var count2=count===2?3:count-1;
+ var count3=count===8?7:count+1;
+ return shuffle([
+  [noun,count],
+  [noun,count2],
+  [otherNouns[0],count],
+  [otherNouns[1],count3]
+ ]);
+}
+
+function render(){
+ clearBoard();
+ finish.className="";
+ var r=rounds[round], noun=r[0], count=r[1];
+ promptEl.textContent=numwords[count]+" "+nouns[noun].pl;
+
+ var grid=document.createElement("div");
+ grid.className="grid";
+
+ makeChoices(noun,count).forEach(function(item){
+  var b=document.createElement("button");
+  b.type="button";
+  b.className="card";
+  b.appendChild(pictureGroup(item[0],item[1]));
+  b.onclick=function(){
+   if(b.disabled)return;
+   if(item[0]===noun && item[1]===count){
+    b.classList.add("ok");
+    b.disabled=true;
+    setTimeout(next,520);
+   }else{
+    b.classList.add("bad");
+    b.disabled=true;
+    setTimeout(function(){
+     b.classList.remove("bad");
+     b.disabled=false;
+    },430);
+   }
+  };
+  grid.appendChild(b);
+ });
+
+ board.appendChild(grid);
+}
+
+function next(){
+ round++;
+ bar.style.width=(round/rounds.length*100)+"%";
+ if(round>=rounds.length){
+  clearBoard();
+  promptEl.textContent="Super!";
+  finish.className="show";
+ }else render();
+}
+
+function restart(){
+ round=0;
+ rounds=shuffle(baseRounds.slice());
+ bar.style.width="0%";
+ render();
+}
+
+document.getElementById("reset").onclick=restart;
+restart();
+})();
+</script>
+</body>
+</html>
