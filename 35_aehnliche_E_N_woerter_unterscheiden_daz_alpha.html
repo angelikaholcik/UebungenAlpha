@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Übung 35 – Ähnliche Wörter unterscheiden</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f1e8;font-family:Arial,sans-serif}
+#game{padding:8px 12px 14px;min-height:100vh}
+.top{display:flex;gap:10px;align-items:center}
+.ctl{width:46px;height:46px;border:0;border-radius:14px;background:#fff;font-size:23px;box-shadow:0 2px 8px #bbb;cursor:pointer}
+.track{flex:1;height:16px;background:#ddd;border-radius:10px;overflow:hidden}
+.bar{height:100%;width:0;background:#444;transition:.2s}
+h1{text-align:center;font-size:clamp(23px,3vw,32px);margin:5px 0 2px}
+#target{text-align:center;font-size:clamp(38px,5.5vw,58px);font-weight:800;margin:0 0 9px}
+#board{position:relative;max-width:900px;height:390px;margin:auto;background:#fff;border-radius:26px;overflow:hidden;box-shadow:0 2px 8px #ddd}
+.grid{height:100%;padding:14px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:12px}
+.card{position:relative;border:0;border-radius:18px;background:#f3f3f3;font-size:clamp(25px,3.5vw,36px);font-weight:800;cursor:pointer;padding:8px}
+.card.ok:after,.card.bad:after{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:64px;font-weight:900;background:rgba(255,255,255,.78);border-radius:18px}
+.card.ok:after{content:"✓";color:#16803a}
+.card.bad:after{content:"✕";color:#c62828}
+#finish{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:82px}
+#finish.show{display:flex}
+@media(max-width:600px){
+ #board{height:350px}
+ .grid{padding:9px;gap:8px}
+ .card{font-size:23px}
+ #target{font-size:39px}
+}
+</style>
+</head>
+<body>
+<div id="game">
+ <div class="top">
+  <button id="reset" class="ctl" type="button">↺</button>
+  <div class="track"><div id="bar" class="bar"></div></div>
+ </div>
+ <h1>Klick auf das gleiche Wort.</h1>
+ <div id="target"></div>
+ <div id="board"><div id="finish">👏 🎉</div></div>
+</div>
+
+<script>
+(function(){
+var board=document.getElementById("board"),
+    target=document.getElementById("target"),
+    bar=document.getElementById("bar"),
+    finish=document.getElementById("finish");
+
+var baseRounds=[
+ {word:"Esel",choices:["Esel","Ente","Erde","Erbse","Elefant","Ecke"]},
+ {word:"Ente",choices:["Ente","Esel","Erde","Ecke","Erbse","Elefant"]},
+ {word:"Erde",choices:["Erde","Erbse","Erdbeere","Ente","Ecke","Esel"]},
+ {word:"Erbse",choices:["Erbse","Erde","Erdbeere","Esel","Ente","Ecke"]},
+ {word:"Erdbeere",choices:["Erdbeere","Erbse","Erde","Elefant","Ehefrau","Ehemann"]},
+ {word:"Elefant",choices:["Elefant","Eltern","Esel","Ente","Erde","Ecke"]},
+ {word:"Nest",choices:["Nest","Nase","Nagel","Nadel","Nacht","Name"]},
+ {word:"Nase",choices:["Nase","Nest","Name","Nagel","Nadel","Nüsse"]},
+ {word:"Nagel",choices:["Nagel","Nadel","Nase","Name","Nacht","Nest"]},
+ {word:"Nadel",choices:["Nadel","Nagel","Nase","Nüsse","Nudeln","Note"]},
+ {word:"Nüsse",choices:["Nüsse","Nudeln","Nase","Nadel","Nest","Nacht"]},
+ {word:"Nudeln",choices:["Nudeln","Nüsse","Nadel","Nase","Nagel","Nest"]},
+ {word:"Nacht",choices:["Nacht","Nase","Nagel","Nest","Name","Note"]},
+ {word:"Name",choices:["Name","Nase","Nadel","Nagel","Note","Nacht"]},
+ {word:"Note",choices:["Note","Nest","Nase","Name","Nacht","Nüsse"]}
+];
+
+var rounds=[],round=0;
+
+function shuffle(a){
+ for(var i=a.length-1;i>0;i--){
+  var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;
+ }
+ return a;
+}
+function clearBoard(){
+ Array.from(board.children).forEach(function(e){if(e!==finish)e.remove()});
+}
+function render(){
+ clearBoard();
+ finish.className="";
+ var r=rounds[round];
+ target.textContent=r.word;
+
+ var grid=document.createElement("div");
+ grid.className="grid";
+
+ shuffle(r.choices.slice()).forEach(function(name){
+   var b=document.createElement("button");
+   b.type="button";
+   b.className="card";
+   b.textContent=name;
+
+   b.onclick=function(){
+     if(b.disabled)return;
+     if(name===r.word){
+       b.classList.add("ok");
+       b.disabled=true;
+       setTimeout(next,520);
+     }else{
+       b.classList.add("bad");
+       b.disabled=true;
+       setTimeout(function(){
+         b.classList.remove("bad");
+         b.disabled=false;
+       },430);
+     }
+   };
+
+   grid.appendChild(b);
+ });
+
+ board.appendChild(grid);
+}
+
+function next(){
+ round++;
+ bar.style.width=(round/rounds.length*100)+"%";
+ if(round>=rounds.length){
+   clearBoard();
+   target.textContent="Super!";
+   finish.className="show";
+ }else render();
+}
+
+function restart(){
+ round=0;
+ rounds=shuffle(baseRounds.slice());
+ bar.style.width="0%";
+ render();
+}
+
+document.getElementById("reset").onclick=restart;
+restart();
+})();
+</script>
+</body>
+</html>

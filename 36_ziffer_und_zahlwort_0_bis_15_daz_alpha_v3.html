@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Übung 36 – Zahlwörter 0 bis 15</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f1e8;font-family:Arial,sans-serif}
+#game{padding:8px 12px 14px;min-height:100vh}
+.top{display:flex;gap:10px;align-items:center}
+.ctl{width:46px;height:46px;border:0;border-radius:14px;background:#fff;font-size:23px;box-shadow:0 2px 8px #bbb;cursor:pointer}
+.track{flex:1;height:16px;background:#ddd;border-radius:10px;overflow:hidden}
+.bar{height:100%;width:0;background:#444;transition:.2s}
+h1{text-align:center;font-size:clamp(23px,3vw,32px);margin:5px 0 3px}
+#prompt{text-align:center;font-size:clamp(40px,6vw,62px);font-weight:800;margin:0 0 9px}
+#board{position:relative;max-width:900px;height:390px;margin:auto;background:#fff;border-radius:26px;overflow:hidden;box-shadow:0 2px 8px #ddd}
+.answers{height:100%;display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);gap:12px;padding:14px}
+.answer{position:relative;border:0;border-radius:20px;background:#f3f3f3;font-size:clamp(26px,3.7vw,38px);font-weight:800;cursor:pointer;padding:10px}
+.answer.ok:after,.answer.bad:after{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:66px;font-weight:900;background:rgba(255,255,255,.8);border-radius:20px}
+.answer.ok:after{content:"✓";color:#16803a}
+.answer.bad:after{content:"✕";color:#c62828}
+#finish{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:82px}
+#finish.show{display:flex}
+@media(max-width:600px){
+ #board{height:350px}
+ .answers{padding:9px;gap:8px}
+ .answer{font-size:23px}
+ #prompt{font-size:45px}
+}
+</style>
+</head>
+<body>
+<div id="game">
+ <div class="top">
+  <button id="reset" class="ctl" type="button" aria-label="Neu starten">↺</button>
+  <div class="track"><div id="bar" class="bar"></div></div>
+ </div>
+ <h1 id="title"></h1>
+ <div id="prompt"></div>
+ <div id="board"><div id="finish">👏 🎉</div></div>
+</div>
+
+<script>
+(function(){
+var title=document.getElementById("title"),
+    promptBox=document.getElementById("prompt"),
+    board=document.getElementById("board"),
+    bar=document.getElementById("bar"),
+    finish=document.getElementById("finish");
+
+var words={
+  0:"null",1:"eins",2:"zwei",3:"drei",4:"vier",5:"fünf",6:"sechs",7:"sieben",
+  8:"acht",9:"neun",10:"zehn",11:"elf",12:"zwölf",13:"dreizehn",14:"vierzehn",15:"fünfzehn"
+};
+
+/* 0–12 je einmal, 13–15 je dreimal; insgesamt 22 Aufgaben */
+var values=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,13,13,14,14,14,15,15,15];
+var rounds=[],round=0;
+
+function shuffle(a){
+ for(var i=a.length-1;i>0;i--){
+   var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;
+ }
+ return a;
+}
+
+function clearBoard(){
+ Array.from(board.children).forEach(function(e){if(e!==finish)e.remove()});
+}
+
+function makeRounds(){
+ var vals=shuffle(values.slice());
+ var out=[];
+ vals.forEach(function(v,i){
+   out.push({value:v, mode:(i%2===0 ? "numToWord" : "wordToNum")});
+ });
+ return out;
+}
+
+/* erzeugt drei plausible falsche Antworten, bevorzugt nahe Zahlen */
+function optionsFor(n){
+ var pool=[];
+ [n-1,n+1,n-2,n+2,n-3,n+3].forEach(function(x){
+   if(x>=0 && x<=15 && x!==n && pool.indexOf(x)<0) pool.push(x);
+ });
+ for(var i=0;i<=15;i++){
+   if(i!==n && pool.indexOf(i)<0) pool.push(i);
+ }
+ shuffle(pool);
+ return shuffle([n].concat(pool.slice(0,3)));
+}
+
+function render(){
+ clearBoard();
+ finish.className="";
+ var r=rounds[round];
+
+ if(r.mode==="numToWord"){
+   title.textContent="Klick auf das richtige Wort.";
+   promptBox.textContent=r.value;
+ }else{
+   title.textContent="Klick auf die richtige Zahl.";
+   promptBox.textContent=words[r.value];
+ }
+
+ var answers=document.createElement("div");
+ answers.className="answers";
+
+ optionsFor(r.value).forEach(function(n){
+   var b=document.createElement("button");
+   b.type="button";
+   b.className="answer";
+   b.textContent=(r.mode==="numToWord") ? words[n] : n;
+
+   b.onclick=function(){
+     if(b.disabled)return;
+     if(n===r.value){
+       b.classList.add("ok");
+       b.disabled=true;
+       setTimeout(next,500);
+     }else{
+       b.classList.add("bad");
+       b.disabled=true;
+       setTimeout(function(){
+         b.classList.remove("bad");
+         b.disabled=false;
+       },420);
+     }
+   };
+
+   answers.appendChild(b);
+ });
+
+ board.appendChild(answers);
+}
+
+function next(){
+ round++;
+ bar.style.width=(round/rounds.length*100)+"%";
+ if(round>=rounds.length){
+   clearBoard();
+   title.textContent="";
+   promptBox.textContent="Super!";
+   finish.className="show";
+ }else render();
+}
+
+function restart(){
+ round=0;
+ rounds=makeRounds();
+ bar.style.width="0%";
+ render();
+}
+
+document.getElementById("reset").onclick=restart;
+restart();
+})();
+</script>
+</body>
+</html>
